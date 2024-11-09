@@ -56,7 +56,7 @@ async def find_group(db: AsyncSession, name: str):
     return group
 
 
-async def lesson_exists(db: AsyncSession, name: str, semestr: str, faculty: str) -> bool:
+async def lesson_exists(db: AsyncSession, name: str, semestr: int, faculty: str) -> bool:
     result = await db.execute(select(Lesson).filter(
         Lesson.name == name,
         Lesson.semestr == semestr,
@@ -65,13 +65,13 @@ async def lesson_exists(db: AsyncSession, name: str, semestr: str, faculty: str)
     return result.scalars().first() is not None
 
 
-async def create_lesson(db: AsyncSession, name: str, semestr: str, faculty: str, year="2024/2025"):
+async def create_lesson(db: AsyncSession, name: str, semestr: int, faculty: str, year="2024/2025"):
     new_lesson = Lesson(name=name, year=year, semestr=semestr, faculty=faculty)
     db.add(new_lesson)
     return new_lesson
 
 
-async def find_lesson(db: AsyncSession, name: str, semestr: str, faculty: str):
+async def find_lesson(db: AsyncSession, name: str, semestr: int, faculty: str):
     lesson = await db.execute(select(Lesson).filter(Lesson.name == name,
                 Lesson.semestr == semestr,
                 Lesson.faculty == faculty))
@@ -95,6 +95,18 @@ async def create_mega_workload(db: AsyncSession, lesson_name: str, type_m: str, 
     new_mega_workload = MegaWorkload(lesson_name=lesson_name, type=type_m, semestr=semestr, faculty=faculty)
     db.add(new_mega_workload)
 
+async def find_mega_workload(db: AsyncSession, lesson_name: str, type_m: str, semestr: int, faculty: str):
+    mega_workload = await db.execute(select(MegaWorkload).filter(MegaWorkload.lesson_name == lesson_name,
+                                                    MegaWorkload.type == type_m,
+                                                    MegaWorkload.semestr == semestr,
+                                                    MegaWorkload.faculty == faculty))
+    mega_workload = mega_workload.scalars().first()
+
+    if mega_workload is None:
+        raise NoResultFound(f"Нагрузка с названием '{lesson_name}' не найдена.")
+
+    return mega_workload
+
 async def create_workload(db: AsyncSession, type_w: str, workload: int, lesson: Lesson, groups: [Groups]):
     new_workload = Workload(
         type=type_w,
@@ -117,7 +129,7 @@ async def main():
                 group = await create_group(db, group_name, number_of_students)
 
             discipline_name = row['Название предмета']
-            semestr = row['семестр'].split()[0]
+            semestr = row['Семестр ']
             faculty = row['Факультет']
             if not await lesson_exists(db, discipline_name, semestr, faculty):
                 lesson = await create_lesson(db, discipline_name, semestr, faculty)
@@ -149,7 +161,6 @@ async def main():
 
         index_of_dicsipline = df.columns.get_loc("Название предмета")
         index_of_faculty = df.columns.get_loc("Факультет")
-        index_of_season = df.columns.get_loc("семестр")
 
         lection_workload = df.columns.get_loc("Лекции нагрузка")
 
@@ -166,7 +177,7 @@ async def main():
             while df.iloc[n, index_of_stream] == 0:
                 n += 1
 
-            lesson = await find_lesson(db, df.iloc[n, index_of_dicsipline], df.iloc[n, index_of_season].split()[0],
+            lesson = await find_lesson(db, df.iloc[n, index_of_dicsipline], df.iloc[n, index_of_sem],
                                  df.iloc[n, index_of_faculty])
             lec_workload = df.iloc[n, lection_workload]
 
@@ -189,7 +200,33 @@ async def main():
 
             n += 1
 
-        await db.commit()  # Сохранение изменений для всех добавленных workload
+        workloads = await db.execute(select(Workload))
+        workloads = workloads.unique().scalars().all()
+
+        for workload in workloads:
+            if workload.type == "Практическое занятие":
+                type_m = "Практика"
+
+            elif workload.type == "Лабораторная работа":
+                type_m = "Лабораторная"
+            else:
+                type_m = "Индивидуальная"
+
+            # mega_workload = await find_mega_workload(db, workload.lesson.name, type_m, workload.lesson.semestr,
+            #                                    workload.lesson.faculty)
+
+            mega_workload = await db.execute(select(MegaWorkload).filter(
+                MegaWorkload.lesson_name == workload.lesson.name,
+                MegaWorkload.type == type_m,
+                MegaWorkload.semestr == workload.lesson.semestr,
+                MegaWorkload.faculty == workload.lesson.faculty
+            ))
+            mega_workload = mega_workload.scalars().first()
+
+            workload.mega_workload = mega_workload
+
+
+        await db.commit()
 
 if __name__ == "__main__":
     asyncio.run(main())
