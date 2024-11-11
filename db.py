@@ -216,16 +216,8 @@ async def main():
             else:
                 type_m = "Индивидуальная"
 
-            # mega_workload = await find_mega_workload(db, workload.lesson.name, type_m, workload.lesson.semestr,
-            #                                    workload.lesson.faculty)
-
-            mega_workload = await db.execute(select(MegaWorkload).filter(
-                MegaWorkload.lesson_name == workload.lesson.name,
-                MegaWorkload.type == type_m,
-                MegaWorkload.semestr == workload.lesson.semestr,
-                MegaWorkload.faculty == workload.lesson.faculty
-            ))
-            mega_workload = mega_workload.scalars().first()
+            mega_workload = await find_mega_workload(db, workload.lesson.name, type_m, workload.lesson.semestr,
+                                               workload.lesson.faculty)
 
             workload.mega_workload = mega_workload
 
