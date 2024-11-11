@@ -127,12 +127,16 @@ async def main():
             number_of_students = row['Студентов ']
             if not await group_exists(db, group_name):
                 group = await create_group(db, group_name, number_of_students)
+            else:
+                group = await find_group(db, group_name)
 
             discipline_name = row['Название предмета']
             semestr = row['Семестр ']
             faculty = row['Факультет']
             if not await lesson_exists(db, discipline_name, semestr, faculty):
                 lesson = await create_lesson(db, discipline_name, semestr, faculty)
+            else:
+                lesson = await find_lesson(db, discipline_name, semestr, faculty)
 
             for type_of_single_workload in general_workloads + individual_workloads:
                 if row[type_of_single_workload[1]] != 0:
