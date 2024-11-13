@@ -48,6 +48,7 @@ class Groups(BaseWithId):
 class Lesson(BaseWithId):
     __tablename__ = 'Lesson'
 
+    stream = Column(String(255), nullable=False)
     name = Column(String(255), nullable=False)
     year = Column(String(255), comment='2023/2024 или 2024/2025', nullable=False)
     semestr = Column(BigInteger, nullable=False)
@@ -81,14 +82,6 @@ class Workload(BaseWithId):
 class MegaWorkload(BaseWithId):
     __tablename__ = 'mega_workloads'
 
-    lesson_name = Column(String(255), nullable=False)
+    type = Column(String(255), CheckConstraint("type IN ('Индивидуальная', 'Практика', 'Лабораторная')"), nullable=True)
     employee_name = Column(String(255), nullable=True)
-    type = Column(String(255), CheckConstraint("type IN ('Индивидуальная', 'Практика', 'Лабораторная')"), nullable=False)
-    semestr = Column(BigInteger, nullable=False)
-    faculty = Column(String(255), nullable=False)
-
     workloads = relationship("Workload", back_populates="mega_workload", lazy=False)
-
-
-    def __repr__(self):
-        return f'MegaWorkload<lesson_name={self.lesson_name}, type={self.type}'
